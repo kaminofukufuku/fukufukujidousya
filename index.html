@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ふくふく自動車（色画用紙カット）</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f7f9fc;
+            color: #333;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #1a202c;
+        }
+        .panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        select, input[type="number"], input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .info-box {
+            background: #edf2f7;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            grid-column: 1 / -1;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            grid-column: 1 / -1;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        button.primary-action {
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex: 2;
+            min-width: 250px;
+        }
+        button.primary-action:hover {
+            background: #2b6cb0;
+        }
+        button.primary-action:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        button.secondary-action {
+            background: #718096;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex: 1;
+            min-width: 180px;
+        }
+        button.secondary-action:hover {
+            background: #4a5568;
+        }
+        button.secondary-action:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        .preview-area {
+            background: #fff;
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            min-height: 450px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+            padding: 30px;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .preview-area.highlight {
+            border-color: #3182ce;
+            background: #ebf8ff;
+        }
+        .placeholder-text {
+            color: #718096;
+            text-align: center;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        #svg-container svg {
+            display: block;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background: white;
+            max-width: 100%;
+            height: auto;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .floating-corner-buttons {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 900;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .floating-corner-buttons:hover {
+            opacity: 1;
+        }
+        .corner-btn {
+            width: 32px;
+            height: 32px;
+            background: #718096;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background 0.2s;
+            padding: 0;
+            line-height: 1;
+        }
+        .corner-btn.btn-add:hover {
+            background: #3182ce;
+        }
+        .corner-btn.btn-delete:hover {
+            background: #e53e3e;
+        }
+
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>ふくふく自動車（色画用紙カット）</h1>
+
+    <div class="panel">
+        <div class="control-group">
+            <label>1. 登録済みの車種を選択</label>
+            <select id="svg-select">
+                <option value="">-- 車種を選んでください --</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>用紙の色 (16色＋線のみ)</label>
+            <select id="colorSelect">
+                </select>
+        </div>
+
+        <div class="control-group">
+            <label>2. 展開図の目標ヨコ寸法 (mm) <span style="font-weight:normal; font-size:11px;">展開図30㎜×30㎜～360㎜×510mm</span></label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="number" id="width-mm" step="0.1" min="30" max="510" disabled>
+                <span>mm</span>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div><strong>展開図のサイズ:</strong> <span id="dimension-display">未選択</span></div>
+            <div><strong>倍率 (オリジナルの比率):</strong> <span id="scale-display">-</span></div>
+        </div>
+
+        <div class="btn-group">
+            <button id="download-pdf" class="primary-action" disabled>展開図のベクターPDFとして保存 (Illustrator用)</button>
+            <button id="reset-size" class="secondary-action" disabled>オリジナルの寸法</button>
+        </div>
+    </div>
+
+    <div class="preview-area" id="drop-zone">
+        <div id="svg-container">
+            <div class="placeholder-text">
+                上のプルダウンから車種を選ぶか、<br>ここに新しいSVGファイルをドラッグ＆ドロップしてください
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="floating-corner-buttons">
+    <button class="corner-btn btn-add" id="open-add-modal" title="新しい車種データを登録">+</button>
+    <button class="corner-btn btn-delete" id="delete-current-svg" title="選択中の車種を削除">×</button>
+</div>
+
+<div class="modal" id="add-modal">
+    <div class="modal-content">
+        <h3>新しい車種（SVGデータ）の登録</h3>
+        <div class="control-group">
+            <label>車種名 (タイトル)</label>
+            <input type="text" id="new-svg-name" placeholder="例: スポーツカー展開図">
+        </div>
+        <div class="control-group">
+            <label>SVGファイルを選択</label>
+            <input type="file" id="new-svg-file" accept=".svg">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+            <button type="button" class="corner-btn" id="close-modal" style="width: auto; padding: 6px 12px; background: #a0aec0; font-size: 0.9rem; border-radius: 4px;">キャンセル</button>
+            <button type="button" id="save-new-svg" style="width: auto; padding: 6px 12px; background: #3182ce; color: white; border: none; font-size: 0.9rem; border-radius: 4px; font-weight: bold; cursor: pointer;">登録して保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const colors = [
+        { name: 'くろ', en: 'Black', hex: '#000000' },
+        { name: 'くらいはいいろ', en: 'Dark Gray', hex: '#555555' },
+        { name: 'はいいろ', en: 'Gray', hex: '#808080' },
+        { name: 'こいこげちゃ', en: 'Dark Brown', hex: '#4A2511' },
+        { name: 'あか', en: 'Red', hex: '#E60012' },
+        { name: 'しゅいろ', en: 'Vermilion', hex: '#EA5506' },
+        { name: 'こいもも', en: 'Dark Peach', hex: '#E4007F' },
+        { name: 'サーモン', en: 'Salmon', hex: '#FF9E8C' },
+        { name: 'あかむらさき', en: 'Red Purple', hex: '#A50055' },
+        { name: 'むらさき', en: 'Purple', hex: '#800080' },
+        { name: 'あお', en: 'Blue', hex: '#0054A6' },
+        { name: 'みずいろ', en: 'Light Blue', hex: '#00A0E9' },
+        { name: 'レモン', en: 'Lemon', hex: '#FFF100' },
+        { name: 'エメラルド', en: 'Emerald', hex: '#00A968' },
+        { name: 'オリーブ', en: 'Olive', hex: '#6B6F2D' },
+        { name: 'うすみずいろ', en: 'Pale Light Blue', hex: '#A0D8EF' },
+        { name: '線のみ', en: 'Line Only', hex: '#FFFFFF' }
+    ];
+
+    const defaultSvgs = [
+        {
+            name: "コンパクトカー (サンプル)",
+            content: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+                <rect x="150" y="150" width="500" height="300" fill="none" stroke="#000" stroke-width="2"/>
+                <circle cx="250" cy="150" r="30" fill="none" stroke="#000" stroke-width="2"/>
+                <circle cx="550" cy="150" r="30" fill="none" stroke="#000" stroke-width="2"/>
+                <circle cx="250" cy="450" r="30" fill="none" stroke="#000" stroke-width="2"/>
+                <circle cx="550" cy="450" r="30" fill="none" stroke="#000" stroke-width="2"/>
+                <text x="400" y="310" font-size="20" text-anchor="middle" fill="#666">コンパクトカー展開図サンプル</text>
+            </svg>`
+        },
+        {
+            name: "四角形ボックス展開図",
+            content: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+                <rect x="100" y="100" width="400" height="400" fill="none" stroke="#ff4500" stroke-width="2" stroke-dasharray="5,5"/>
+                <rect x="200" y="200" width="200" height="200" fill="none" stroke="#000" stroke-width="2"/>
+                <text x="300" y="310" font-size="18" text-anchor="middle" fill="#333">ボックス展開図</text>
+            </svg>`
+        }
+    ];
+
+    function getStoredSvgs() {
+        const stored = localStorage.getItem('my_svg_database');
+        if (!stored) {
+            localStorage.setItem('my_svg_database', JSON.stringify(defaultSvgs));
+            return defaultSvgs;
+        }
+        try {
+            return JSON.parse(stored);
+        } catch(e) {
+            return defaultSvgs;
+        }
+    }
+
+    function saveStoredSvgs(svgs) {
+        localStorage.setItem('my_svg_database', JSON.stringify(svgs));
+    }
+
+    const svgSelect = document.getElementById('svg-select');
+    const colorSelect = document.getElementById('colorSelect');
+    const widthMmInput = document.getElementById('width-mm');
+    const dimensionDisplay = document.getElementById('dimension-display');
+    const scaleDisplay = document.getElementById('scale-display');
+    const svgContainer = document.getElementById('svg-container');
+    const dropZone = document.getElementById('drop-zone');
+    const downloadPdfBtn = document.getElementById('download-pdf');
+    const resetSizeBtn = document.getElementById('reset-size');
+    
+    const addModal = document.getElementById('add-modal');
+    const openAddModalBtn = document.getElementById('open-add-modal');
+    const deleteCurrentSvgBtn = document.getElementById('delete-current-svg');
+    const closeModalBtn = document.getElementById('close-modal');
+    const saveNewSvgBtn = document.getElementById('save-new-svg');
+    const newSvgNameInput = document.getElementById('new-svg-name');
+    const newSvgFileInput = document.getElementById('new-svg-file');
+
+    let currentSvgString = '';
+    let bbox = { x: 0, y: 0, width: 500, height: 500 };
+    let originalWidthMm = 0;
+    let originalHeightMm = 0;
+    let aspectRatio = 1;
+    let activeTitle = 'drawing';
+
+    const MM_PER_PX = 25.4 / 96;
+    const COLOR_MARGIN_BOTTOM_MM = 10; // カットライン外側（下側）の余白(mm)
+
+    colors.forEach((c, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = c.name;
+        colorSelect.appendChild(option);
+    });
+
+    colorSelect.addEventListener('change', () => {
+        if (currentSvgString) {
+            updateDimensions(parseFloat(widthMmInput.value) || originalWidthMm);
+        }
+    });
+
+    function initSelectBox(selectIndex = "") {
+        const svgs = getStoredSvgs();
+        svgSelect.innerHTML = '<option value="">-- 車種を選んでください --</option>';
+        svgs.forEach((item, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.textContent = item.name;
+            svgSelect.appendChild(opt);
+        });
+        if (selectIndex !== "" && svgs[selectIndex]) {
+            svgSelect.value = selectIndex;
+        }
+    }
+
+    initSelectBox();
+
+    svgSelect.addEventListener('change', (e) => {
+        const index = e.target.value;
+        if (index === "") {
+            resetView();
+            return;
+        }
+        const svgs = getStoredSvgs();
+        const target = svgs[index];
+        if (target) {
+            activeTitle = target.name.replace(/[\/\s]+/g, "_");
+            loadSvgContent(target.content);
+        }
+    });
+
+    function resetView() {
+        currentSvgString = '';
+        svgContainer.innerHTML = '<div class="placeholder-text">上のプルダウンから車種を選ぶか、<br>ここに新しいSVGファイルをドラッグ＆ドロップしてください</div>';
+        widthMmInput.value = '';
+        widthMmInput.disabled = true;
+        downloadPdfBtn.disabled = true;
+        resetSizeBtn.disabled = true;
+        dimensionDisplay.textContent = '未選択';
+        scaleDisplay.textContent = '-';
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('highlight');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('highlight');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            promptAndAddNewSvg(files[0]);
+        }
+    }, false);
+
+    openAddModalBtn.addEventListener('click', () => {
+        newSvgNameInput.value = '';
+        newSvgFileInput.value = '';
+        addModal.style.display = 'flex';
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+        addModal.style.display = 'none';
+    });
+
+    saveNewSvgBtn.addEventListener('click', () => {
+        const name = newSvgNameInput.value.trim();
+        const file = newSvgFileInput.files[0];
+        if (!name || !file) {
+            alert('車種名を入力し、SVGファイルを選択してください。');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            const svgs = getStoredSvgs();
+            svgs.push({ name: name, content: content });
+            saveStoredSvgs(svgs);
+            
+            const newIndex = svgs.length - 1;
+            initSelectBox(newIndex);
+            
+            activeTitle = name.replace(/[\/\s]+/g, "_");
+            loadSvgContent(content);
+
+            addModal.style.display = 'none';
+        };
+        reader.readAsText(file);
+    });
+
+    deleteCurrentSvgBtn.addEventListener('click', () => {
+        const currentIndex = svgSelect.value;
+        if (currentIndex === "") {
+            alert('削除する車種が選択されていません。');
+            return;
+        }
+
+        const svgs = getStoredSvgs();
+        const targetName = svgs[currentIndex] ? svgs[currentIndex].name : "この車種";
+
+        if (confirm(`「${targetName}」を削除してもよろしいですか？`)) {
+            svgs.splice(currentIndex, 1);
+            saveStoredSvgs(svgs);
+            initSelectBox();
+            resetView();
+        }
+    });
+
+    resetSizeBtn.addEventListener('click', () => {
+        if (originalWidthMm > 0) {
+            widthMmInput.value = originalWidthMm.toFixed(1);
+            updateDimensions(originalWidthMm);
+        }
+    });
+
+    function promptAndAddNewSvg(file) {
+        if (!file.name.toLowerCase().endsWith('.svg')) {
+            alert('SVGファイルを指定してください。');
+            return;
+        }
+        const defaultName = file.name.replace(/\.[^/.]+$/, "");
+        const name = prompt('登録する車種の名前（タイトル）を入力してください:', defaultName);
+        if (!name) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            const svgs = getStoredSvgs();
+            svgs.push({ name: name, content: content });
+            saveStoredSvgs(svgs);
+            
+            const newIndex = svgs.length - 1;
+            initSelectBox(newIndex);
+
+            activeTitle = name.replace(/[\/\s]+/g, "_");
+            loadSvgContent(content);
+        };
+        reader.readAsText(file);
+    }
+
+    function loadSvgContent(svgText) {
+        currentSvgString = svgText;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+
+        if (!svgEl) {
+            alert('有効なSVGデータではありません。');
+            return;
+        }
+
+        svgContainer.innerHTML = '';
+        svgContainer.appendChild(svgEl);
+
+        try {
+            bbox = svgEl.getBBox();
+        } catch (e) {
+            bbox = null;
+        }
+
+        if (!bbox || bbox.width === 0 || bbox.height === 0) {
+            const vb = svgEl.getAttribute('viewBox');
+            if (vb) {
+                const p = vb.split(/[,\s]+/).map(Number);
+                if (p.length === 4) bbox = { x: p[0], y: p[1], width: p[2], height: p[3] };
+            }
+            if (!bbox || bbox.width === 0) {
+                const w = parseFloat(svgEl.getAttribute('width')) || 500;
+                const h = parseFloat(svgEl.getAttribute('height')) || 500;
+                bbox = { x: 0, y: 0, width: w, height: h };
+            }
+        }
+
+        originalWidthMm = bbox.width * MM_PER_PX;
+        originalHeightMm = bbox.height * MM_PER_PX;
+        aspectRatio = originalHeightMm / originalWidthMm;
+
+        if (originalWidthMm < 30 || originalHeightMm < 30 || 
+            !((originalWidthMm <= 360.1 && originalHeightMm <= 510.1) || (originalWidthMm <= 510.1 && originalHeightMm <= 360.1))) {
+            alert("注意: この図面のオリジナル寸法が制限（最小30mm×30mm、最大360mm×510mm）の範囲外です。適宜サイズを調整してください。");
+        }
+
+        widthMmInput.value = originalWidthMm.toFixed(1);
+        widthMmInput.disabled = false;
+        downloadPdfBtn.disabled = false;
+        resetSizeBtn.disabled = false;
+
+        updateDimensions(originalWidthMm);
+    }
+
+    widthMmInput.addEventListener('input', () => {
+        const val = parseFloat(widthMmInput.value);
+        if (!isNaN(val) && val > 0) {
+            updateDimensions(val);
+        }
+    });
+
+    function updateDimensions(targetWidthMm) {
+        const targetHeightMm = targetWidthMm * aspectRatio;
+        const scale = (targetWidthMm / originalWidthMm) * 100;
+
+        dimensionDisplay.textContent = `ヨコ ${targetWidthMm.toFixed(1)} mm × タテ ${targetHeightMm.toFixed(1)} mm`;
+        scaleDisplay.textContent = `${scale.toFixed(1)}%`;
+
+        renderPreview(targetWidthMm, targetHeightMm);
+    }
+
+    // テキストをCanvas描画で画像データURL（PNG）に変換し、文字化けを防ぐ補助関数
+    function createTextAsImage(text, fontSizePx, textColor = '#333333') {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const scale = 4; // 高解像度スケール
+        const fontSpec = `bold ${fontSizePx * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Meiryo", sans-serif`;
+        ctx.font = fontSpec;
+
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+        const canvasWidth = Math.ceil(textWidth + 4 * scale);
+        const canvasHeight = Math.ceil(fontSizePx * 1.5 * scale);
+
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        ctx.font = fontSpec;
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 2 * scale, canvasHeight / 2);
+
+        return {
+            dataUrl: canvas.toDataURL('image/png'),
+            width: canvasWidth / scale,
+            height: canvasHeight / scale
+        };
+    }
+
+    // SVGのカットライン（展開図）の外側（下側）に正方形と色名を追加する処理
+    function addColorIndicator(svgEl, wMm) {
+        const selectedColorIdx = colorSelect.value;
+        if (selectedColorIdx === "") return;
+
+        const colorObj = colors[selectedColorIdx];
+        if (!colorObj || colorObj.en === 'Line Only') return;
+
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('id', 'color-indicator-group');
+
+        const unitPerMm = bbox.width / wMm;
+        const squareSize = 6 * unitPerMm; // 6mm相当
+        const textFontSize = 4.5 * unitPerMm;
+
+        // カットライン（bbox.y + bbox.height）の外側（下側2mmの位置）に配置
+        const rectX = bbox.x;
+        const rectY = bbox.y + bbox.height + (2 * unitPerMm);
+
+        // 小さい正方形
+        const colorRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        colorRect.setAttribute('x', rectX);
+        colorRect.setAttribute('y', rectY);
+        colorRect.setAttribute('width', squareSize);
+        colorRect.setAttribute('height', squareSize);
+        colorRect.setAttribute('fill', colorObj.hex);
+        colorRect.setAttribute('stroke', '#333333');
+        colorRect.setAttribute('stroke-width', (0.3 * unitPerMm).toString());
+        colorRect.setAttribute('rx', (0.5 * unitPerMm).toString());
+
+        // 色名テキスト（PDFでの文字化けを防ぐためCanvasで画像化してSVG imageタグとして埋め込み）
+        const imgInfo = createTextAsImage(colorObj.name, textFontSize);
+        const colorImg = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+        colorImg.setAttribute('x', rectX + squareSize + (2 * unitPerMm));
+        colorImg.setAttribute('y', rectY + (squareSize - imgInfo.height) / 2);
+        colorImg.setAttribute('width', imgInfo.width);
+        colorImg.setAttribute('height', imgInfo.height);
+        colorImg.setAttribute('href', imgInfo.dataUrl);
+        colorImg.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', imgInfo.dataUrl);
+
+        group.appendChild(colorRect);
+        group.appendChild(colorImg);
+        svgEl.appendChild(group);
+    }
+
+    function renderPreview(wMm, hMm) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(currentSvgString, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+
+        const unitPerMm = bbox.width / wMm;
+        const extraBottom = COLOR_MARGIN_BOTTOM_MM * unitPerMm;
+
+        // カットライン外側まで表示領域(viewBox)を拡張
+        svgEl.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height + extraBottom}`);
+        
+        // 旧背景rectおよび旧インジケーターの削除
+        let existingBg = svgEl.querySelector('#paper-bg-rect');
+        if (existingBg) existingBg.remove();
+
+        let existingIndicator = svgEl.querySelector('#color-indicator-group');
+        if (existingIndicator) existingIndicator.remove();
+
+        // カットライン外側に色インジケーターを追加
+        addColorIndicator(svgEl, wMm);
+
+        const totalHMm = hMm + COLOR_MARGIN_BOTTOM_MM;
+        const wPx = wMm / MM_PER_PX;
+        const hPx = totalHMm / MM_PER_PX;
+        svgEl.setAttribute('width', `${wPx}px`);
+        svgEl.setAttribute('height', `${hPx}px`);
+
+        svgContainer.innerHTML = '';
+        svgContainer.appendChild(svgEl);
+    }
+
+    downloadPdfBtn.addEventListener('click', async () => {
+        const targetWidthMm = parseFloat(widthMmInput.value);
+        const targetHeightMm = targetWidthMm * aspectRatio;
+
+        if (targetWidthMm < 29.9 || targetHeightMm < 29.9) {
+            alert("仕上がり寸法が30㎜×30㎜に満たないため、PDF出力できません。");
+            return;
+        }
+        if (!((targetWidthMm <= 360.1 && targetHeightMm <= 510.1) || (targetWidthMm <= 510.1 && targetHeightMm <= 360.1))) {
+            alert("最大寸法（360㎜×510㎜）に収まらないため、PDF出力できません。");
+            return;
+        }
+
+        downloadPdfBtn.textContent = "PDFを生成中...";
+        downloadPdfBtn.classList.add('loading');
+
+        try {
+            const { jsPDF } = window.jspdf;
+            
+            const pdfTotalHeightMm = targetHeightMm + COLOR_MARGIN_BOTTOM_MM;
+
+            const pdf = new jsPDF({
+                orientation: targetWidthMm > pdfTotalHeightMm ? 'l' : 'p',
+                unit: 'mm',
+                format: [targetWidthMm, pdfTotalHeightMm]
+            });
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(currentSvgString, 'image/svg+xml');
+            const svgEl = doc.querySelector('svg');
+
+            const unitPerMm = bbox.width / targetWidthMm;
+            const extraBottom = COLOR_MARGIN_BOTTOM_MM * unitPerMm;
+
+            // カットライン外側まで表示領域(viewBox)を拡張
+            svgEl.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height + extraBottom}`);
+            
+            // PDF出力時もカットライン外側に色インジケーターを挿入
+            addColorIndicator(svgEl, targetWidthMm);
+
+            const wPx = targetWidthMm / MM_PER_PX;
+            const hPx = pdfTotalHeightMm / MM_PER_PX;
+            svgEl.setAttribute('width', `${wPx}px`);
+            svgEl.setAttribute('height', `${hPx}px`);
+
+            await pdf.svg(svgEl, {
+                x: 0,
+                y: 0,
+                width: targetWidthMm,
+                height: pdfTotalHeightMm
+            });
+
+            pdf.save(`${activeTitle}_${targetWidthMm.toFixed(1)}mm.pdf`);
+        } catch (err) {
+            console.error(err);
+            alert("PDFの生成に失敗しました: " + err.message);
+        } finally {
+            downloadPdfBtn.textContent = "展開図のベクターPDFとして保存 (Illustrator用)";
+            downloadPdfBtn.classList.remove('loading');
+        }
+    });
+</script>
+
+</body>
+</html>
